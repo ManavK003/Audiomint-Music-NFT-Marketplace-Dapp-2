@@ -1,4 +1,3 @@
-// ✅ Finalized Mint.jsx (React CRA + Express backend + IPFS metadata upload)
 import { useState } from "react";
 import { BrowserProvider, Contract, parseUnits } from "ethers";
 import {
@@ -26,7 +25,7 @@ export default function Mint({ wallet }) {
     }
 
     try {
-      setStatus("⏳ Uploading song and metadata to IPFS...");
+      setStatus("⏳ Uploading audio + metadata to IPFS...");
 
       const formData = new FormData();
       formData.append("file", file);
@@ -46,75 +45,60 @@ export default function Mint({ wallet }) {
       setStatus("✅ Metadata uploaded. Ready to mint.");
     } catch (err) {
       console.error("❌ IPFS upload failed:", err);
-      setStatus("❌ Upload failed. See console.");
+      setStatus("❌ Upload failed. Check console.");
     }
   };
 
   const handleMint = async () => {
     if (!tokenURI || !price || isNaN(price) || Number(price) <= 0) {
-      alert("Please upload metadata and enter a valid price");
+      alert("Upload metadata and enter a valid price");
       return;
     }
-  
+
     try {
       setStatus("⏳ Minting NFT...");
+
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-  
-      const nftContract = new Contract(MUSICNFT_ADDRESS, MUSICNFT_ABI, signer);
+
+      const nft = new Contract(MUSICNFT_ADDRESS, MUSICNFT_ABI, signer);
       const yoda = new Contract(YODA_ADDRESS, YODA_ABI, signer);
-      const marketplace = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
-  
-      // Mint NFT
-      const mintTx = await nftContract.mintMusicNFT(tokenURI);
+      const market = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
+
+      const mintTx = await nft.mintMusicNFT(tokenURI);
       await mintTx.wait();
-  
-      const tokenCounter = await nftContract.tokenCounter();
+
+      const tokenCounter = await nft.tokenCounter();
       const tokenId = tokenCounter - 1n;
+
       const currentUser = await signer.getAddress();
-  
-      const owner = await nftContract.ownerOf(tokenId);
+      const owner = await nft.ownerOf(tokenId);
       if (owner.toLowerCase() !== currentUser.toLowerCase()) {
         throw new Error("You are not the owner of the NFT");
       }
-  
-      // Approve NFT transfer to marketplace
-      const approveNFTTx = await nftContract.approve(MARKETPLACE_ADDRESS, tokenId);
-      await approveNFTTx.wait(); // ✅ Wait for approval to complete
-  
-      const approved = await nftContract.getApproved(tokenId);
+
+      await nft.approve(MARKETPLACE_ADDRESS, tokenId);
+      const approved = await nft.getApproved(tokenId);
       if (approved.toLowerCase() !== MARKETPLACE_ADDRESS.toLowerCase()) {
-        throw new Error("Marketplace is not approved to transfer this NFT");
+        throw new Error("Marketplace not approved");
       }
-  
-      // Handle YODA allowance
-      const priceInWei = parseUnits(price, 2); // 2 decimals
+
+      const priceInWei = parseUnits(price, 2);
       const allowance = await yoda.allowance(currentUser, MARKETPLACE_ADDRESS);
-  
       if (allowance < priceInWei) {
         const approveYodaTx = await yoda.approve(MARKETPLACE_ADDRESS, priceInWei);
         await approveYodaTx.wait();
       }
-  
-      // Debug logs
-      console.log("🎯 Token ID:", tokenId.toString());
-      console.log("👑 Owner:", owner);
-      console.log("🧾 NFT Approved:", approved);
-      console.log("📦 Price (YODA):", price);
-      console.log("📦 Price (wei):", priceInWei.toString());
-  
-      // List NFT on the marketplace
-      const listTx = await marketplace.listNFT(tokenId, priceInWei);
+
+      const listTx = await market.listNFT(tokenId, priceInWei);
       await listTx.wait();
-  
+
       setStatus("✅ NFT minted and listed!");
     } catch (err) {
-      console.error("❌ Error during mint/list:", err);
-      setStatus("❌ Failed to mint/list NFT. See console.");
+      console.error("❌ Mint/list failed:", err);
+      setStatus("❌ Mint or list failed. See console.");
     }
   };
-  
-  
 
   return (
     <div className="p-4 space-y-4">
@@ -134,23 +118,21 @@ export default function Mint({ wallet }) {
       <input type="text" placeholder="Price in YODA" className="border p-2 w-full" value={price} onChange={(e) => setPrice(e.target.value)} />
 
       <div className="space-x-2">
-      <div className="space-x-2">
-  <button
-    onClick={uploadMetadataToIPFS}
-    disabled={status.includes("⏳")}
-    className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
-  >
-    Upload Metadata
-  </button>
+        <button
+          onClick={uploadMetadataToIPFS}
+          disabled={status.includes("⏳")}
+          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50"
+        >
+          Upload Metadata
+        </button>
 
-  <button
-    onClick={handleMint}
-    disabled={status.includes("⏳")}
-    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-  >
-    Mint & List
-  </button>
-</div>
+        <button
+          onClick={handleMint}
+          disabled={status.includes("⏳")}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          Mint & List
+        </button>
       </div>
 
       <p className="text-sm text-gray-700">{status}</p>

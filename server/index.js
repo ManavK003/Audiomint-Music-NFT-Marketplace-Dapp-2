@@ -22,10 +22,11 @@ if (!PINATA_JWT) {
   process.exit(1);
 }
 
-app.use(cors());
+// ✅ CORS for frontend
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// ✅ Upload Route using Pinata
+// ✅ Upload route: Pinata IPFS
 app.post('/upload', (req, res) => {
   const form = formidable({ multiples: false, keepExtensions: true });
 
@@ -34,9 +35,6 @@ app.post('/upload', (req, res) => {
       console.error("❌ Form parsing error:", err);
       return res.status(500).json({ error: 'Upload error' });
     }
-
-    console.log("📤 Fields:", fields);
-    console.log("📤 Files:", files);
 
     try {
       const file = files.file?.[0];
@@ -74,21 +72,49 @@ app.post('/upload', (req, res) => {
   });
 });
 
-// ✅ Proxy Route for IPFS metadata
+// ✅ Proxy route: safer with fallback gateways
 app.get("/proxy/:cid", async (req, res) => {
   const cid = req.params.cid;
   console.log("🔍 Fetching IPFS CID:", cid);
+
+  const gateways = [
+    `https://cloudflare-ipfs.com/ipfs/${cid}`,
+    `https://ipfs.io/ipfs/${cid}`,
+    `https://gateway.pinata.cloud/ipfs/${cid}`
+  ];
+
   try {
-    const response = await fetch(`https://gateway.pinata.cloud/ipfs/${cid}`);
-    if (!response.ok) throw new Error("Fetch failed");
-    const data = await response.json();
-    res.json(data);
+    let response;
+
+    for (const url of gateways) {
+      try {
+        response = await fetch(url);
+        if (response.ok) break;
+        console.warn(`⚠️ Failed at ${url}: ${response.status}`);
+      } catch (err) {
+        console.warn(`⚠️ Fetch error from ${url}:`, err.message);
+      }
+    }
+
+    if (!response || !response.ok) {
+      throw new Error("All IPFS gateways failed");
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType.includes("application/json")) {
+      return res.status(415).json({ error: "Unsupported content-type: " + contentType });
+    }
+
+    const json = await response.json();
+    res.json(json);
+
   } catch (e) {
     console.error("❌ Proxy fetch failed:", e.message);
     res.status(500).json({ error: "Could not fetch metadata" });
   }
 });
 
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });
