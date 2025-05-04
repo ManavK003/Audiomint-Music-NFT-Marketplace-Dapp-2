@@ -1,0 +1,3 @@
+# Audiomint: Music NFT Marketplace Dapp
+
+Audiomint is a decentralized music NFT marketplace where anyone can mint and own unique NFT songs, tied to their blockchain-based owner ID. Built using Solidity and React, the platform enables secure creation and trade of music assets through MetaMask, supporting multiple cryptocurrencies. Audiomint also features dynamic pricing influenced by song popularity, ownership history, and artist activity. By removing gatekeeping and empowering users to directly mint and monetize their work, Audiomint creates a transparent, inclusive, and creator-driven ecosystem for digital music ownership. Audiomint empowers artists and fans by creating a transparent, user-driven ecosystem for digital music ownership.
