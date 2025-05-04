@@ -65,6 +65,7 @@ export default function Mint({ wallet }) {
       const yoda = new Contract(YODA_ADDRESS, YODA_ABI, signer);
       const market = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
 
+      // Mint NFT
       const mintTx = await nft.mintMusicNFT(tokenURI);
       await mintTx.wait();
 
@@ -77,12 +78,13 @@ export default function Mint({ wallet }) {
         throw new Error("You are not the owner of the NFT");
       }
 
-      await nft.approve(MARKETPLACE_ADDRESS, tokenId);
+      // Approve marketplace
       const approved = await nft.getApproved(tokenId);
       if (approved.toLowerCase() !== MARKETPLACE_ADDRESS.toLowerCase()) {
-        throw new Error("Marketplace not approved");
+        await nft.approve(MARKETPLACE_ADDRESS, tokenId);
       }
 
+      // Ensure YODA token approval
       const priceInWei = parseUnits(price, 2);
       const allowance = await yoda.allowance(currentUser, MARKETPLACE_ADDRESS);
       if (allowance < priceInWei) {
@@ -90,10 +92,13 @@ export default function Mint({ wallet }) {
         await approveYodaTx.wait();
       }
 
+      // List NFT
       const listTx = await market.listNFT(tokenId, priceInWei);
       await listTx.wait();
 
       setStatus("✅ NFT minted and listed!");
+      setName(""); setArtist(""); setDescription(""); setFile(null); setPrice(""); setTokenURI("");
+
     } catch (err) {
       console.error("❌ Mint/list failed:", err);
       setStatus("❌ Mint or list failed. See console.");

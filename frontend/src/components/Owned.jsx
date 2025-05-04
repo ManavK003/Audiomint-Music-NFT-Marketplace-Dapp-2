@@ -90,7 +90,7 @@ export default function Owned({ wallet }) {
           <p><strong>Description:</strong> {nft.description || "No description provided."}</p>
           <audio controls className="w-full mt-2">
             <source
-              src={`https://nftstorage.link/ipfs/${nft.uri.split("ipfs://")[1]}`}
+              src={`http://localhost:4000/proxy/${nft.properties?.audio?.split("ipfs://")[1]}`}
               type="audio/mpeg"
             />
             Your browser does not support the audio element.
