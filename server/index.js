@@ -134,13 +134,14 @@ app.get("/proxy/:cid", async (req, res) => {
     console.log("⚡ Serving from cache");
     return res.json(ipfsCache.get(cid));
   }
-
+  const BACKEND = process.env.BACKEND_PUBLIC_URL || `http://localhost:${PORT}`;
   const gateways = [
     `https://nftstorage.link/ipfs/${cid}`,
     `https://ipfs.io/ipfs/${cid}`,
     `https://gateway.pinata.cloud/ipfs/${cid}`,
     `https://dweb.link/ipfs/${cid}`,
     `https://ipfs.infura.io/ipfs/${cid}`,
+    `${BACKEND}/proxy/${cid}?nocache=true`,
   ];
 
   try {

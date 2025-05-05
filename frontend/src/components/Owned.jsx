@@ -33,7 +33,8 @@ export default function Owned({ wallet }) {
         ) {
           // 👇 Fetch metadata.json from IPFS
           const ipfsCid = tokenURI.split("ipfs://")[1];
-          const metaRes = await fetch(`http://localhost:4000/proxy/${ipfsCid}`);
+          const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+          const metaRes = await fetch(`${BACKEND}/proxy/${ipfsCid}`);
           const metadata = await metaRes.json();
 
           temp.push({

@@ -45,7 +45,8 @@ export default function CollectionPage() {
   
           if (isOwnedByUser || isListedByUser) {
             const ipfsCid = tokenURI.split("ipfs://")[1];
-            const metaRes = await fetch(`http://localhost:4000/proxy/${ipfsCid}`);
+            const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+            const metaRes = await fetch(`${BACKEND}/proxy/${ipfsCid}`);
             if (!metaRes.ok) throw new Error(`Failed to fetch metadata: ${metaRes.status}`);
             const metadata = await metaRes.json();
   

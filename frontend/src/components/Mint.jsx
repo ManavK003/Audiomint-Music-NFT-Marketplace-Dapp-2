@@ -37,7 +37,8 @@ export default function MintPage() {
       formData.append("artist", artist);
       formData.append("description", description);
 
-      const res = await fetch(`${process.env.REACT_APP_BACKEND || 'http://localhost:4000'}/upload`, {
+      const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+      const res = await fetch(`${BACKEND}/upload`, {
         method: "POST",
         body: formData,
       });

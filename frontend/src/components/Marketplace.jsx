@@ -40,7 +40,8 @@ export default function Marketplace() {
             const cid = tokenURI.split("ipfs://")[1];
 
             // Fetch metadata from Express proxy
-            const res = await fetch(`http://localhost:4000/proxy/${cid}`);
+            const BACKEND = process.env.REACT_APP_BACKEND_URL || "http://localhost:4000";
+            const res = await fetch(`${BACKEND}/proxy/${cid}`);
             
             if (!res.ok) {
               throw new Error(`Failed to fetch metadata: ${res.status}`);
