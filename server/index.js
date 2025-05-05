@@ -126,13 +126,15 @@ app.post('/upload', (req, res) => {
 app.get("/proxy/:cid", async (req, res) => {
   const cid = req.params.cid;
   console.log("🔍 Fetching IPFS CID:", cid);
-  
-  // Return cached response if available
-  if (ipfsCache.has(cid)) {
+
+  const bypassCache = req.query.nocache === "true";
+
+  // Serve from cache (for JSON only)
+  if (!bypassCache && ipfsCache.has(cid)) {
     console.log("⚡ Serving from cache");
     return res.json(ipfsCache.get(cid));
   }
-  
+
   const gateways = [
     `https://nftstorage.link/ipfs/${cid}`,
     `https://ipfs.io/ipfs/${cid}`,
@@ -140,17 +142,17 @@ app.get("/proxy/:cid", async (req, res) => {
     `https://dweb.link/ipfs/${cid}`,
     `https://ipfs.infura.io/ipfs/${cid}`,
   ];
-  
+
   try {
     let response;
     for (const url of gateways) {
       console.log("🌐 Trying", url);
       try {
         response = await fetch(url, {
-          timeout: 10000,  // 10 second timeout
-          headers: { 'Accept': 'application/json,*/*' }
+          timeout: 10000,
+          headers: { Accept: "application/json,*/*" },
         });
-        
+
         if (response.ok) {
           console.log(`✅ Success from ${url}`);
           break;
@@ -160,30 +162,30 @@ app.get("/proxy/:cid", async (req, res) => {
         console.warn(`⚠️ Fetch error at ${url}:`, err.message);
       }
     }
-    
+
     if (!response || !response.ok) {
       throw new Error("All IPFS gateways failed");
     }
-    
+
     const contentType = response.headers.get("content-type") || "";
-    
-    // Handle JSON response
+    console.log(`📦 Served content-type: ${contentType}`);
+
     if (contentType.includes("application/json")) {
       const data = await response.json();
-      ipfsCache.set(cid, data); // Cache the response
+      ipfsCache.set(cid, data);
       return res.json(data);
+    } else {
+      const buffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", "inline"); // 👈 Ensures audio/image loads in browser
+      return res.send(Buffer.from(buffer));
     }
-    
-    // For non-JSON responses (like audio files), proxy the raw content
-    const buffer = await response.arrayBuffer();
-    res.set('Content-Type', contentType);
-    return res.send(Buffer.from(buffer));
-    
   } catch (e) {
     console.error("❌ Proxy fetch failed:", e.message);
     res.status(500).json({ error: "Could not fetch from IPFS", message: e.message });
   }
 });
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {

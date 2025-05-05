@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { useEffect, useState, useContext } from "react";
+import { Contract, formatUnits } from "ethers";
+import { Web3Context } from "../context/Web3Context";
 import {
   MARKETPLACE_ABI,
   MARKETPLACE_ADDRESS,
   MUSICNFT_ABI,
   MUSICNFT_ADDRESS,
+  YODA_ABI,
+  YODA_ADDRESS,
 } from "../config";
 
-export default function Marketplace({ wallet }) {
+export default function Marketplace() {
+  const { account, provider, yoda } = useContext(Web3Context);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,10 +22,10 @@ export default function Marketplace({ wallet }) {
     setError(null);
     
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      // Use provider from context instead of creating a new one
       const market = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
       const nft = new Contract(MUSICNFT_ADDRESS, MUSICNFT_ABI, provider);
-
+      
       const tempListings = [];
       let tokenId = 0;
       let consecutiveErrors = 0;
@@ -79,36 +83,81 @@ export default function Marketplace({ wallet }) {
   };
 
   useEffect(() => {
-    if (wallet) {
+    if (provider && account) {
       loadListings();
     }
-  }, [wallet]);
+  }, [provider, account]);
 
   const handleBuy = async (tokenId) => {
     try {
-      const provider = new BrowserProvider(window.ethereum);
+      if (!provider) {
+        throw new Error("Provider not connected");
+      }
+      
       const signer = await provider.getSigner();
-      const market = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
-
-      // Get listing price before purchase
+      if (!signer) {
+        throw new Error("Failed to get signer");
+      }
+      
+      // Explicitly recreate contract instances with the signer
+      const market = new Contract(
+        MARKETPLACE_ADDRESS,
+        MARKETPLACE_ABI,
+        signer
+      );
+      
+      // No need to recreate yoda contract since we already have it from context
+      if (!yoda) {
+        throw new Error("YODA token contract not available");
+      }
+      
+      // Log contract information for debugging
+      console.log("🔍 Market contract address:", MARKETPLACE_ADDRESS);
+      console.log("🔍 Contract interface:", market.interface ? "Available" : "Not available");
+      
+      // Check if contract has buyNFT function directly - safer approach
+      try {
+        // Check if the function exists by trying to access it
+        if (typeof market.buyNFT !== 'function') {
+          console.error("buyNFT function not found on contract");
+          throw new Error("Contract is missing the buyNFT function");
+        }
+        console.log("✅ buyNFT function found on contract");
+      } catch (err) {
+        console.error("Error checking contract functions:", err);
+        throw new Error("Failed to validate contract interface");
+      }
+  
       const listing = await market.listings(tokenId);
+      const price = listing.price;
+  
+      // 1. Approve YODA token if needed
+      const allowance = await yoda.read.allowance(account, MARKETPLACE_ADDRESS);
+      console.log("Current allowance:", formatUnits(allowance, 2), "YODA");
       
-      const tx = await market.buyNFT(tokenId, { value: listing.price });
-      
-      // Show pending notification
-      alert("⏳ Transaction submitted! Waiting for confirmation...");
-      
+      if (allowance < price) {
+        console.log("Approving tokens:", formatUnits(price, 2), "YODA");
+        const approveTx = await yoda.write.approve(MARKETPLACE_ADDRESS, price);
+        console.log("Approval transaction:", approveTx.hash);
+        await approveTx.wait();
+        console.log("Approval confirmed");
+      }
+  
+      // 2. Execute the buy transaction
+      console.log("Executing buyNFT for token:", tokenId);
+      const tx = await market.buyNFT(tokenId);
+      console.log("Purchase transaction:", tx.hash);
       await tx.wait();
+      console.log("Purchase confirmed");
+  
       alert("✅ Purchase complete! You now own this NFT.");
-      
-      // Refresh listings
       await loadListings();
     } catch (err) {
-      console.error("❌ Purchase failed:", err.message || err);
-      alert("❌ Transaction failed. " + (err.message ? err.message : "See console for details."));
+      console.error("❌ Purchase failed:", err);
+      alert("❌ Transaction failed: " + (err.reason || err.message || "Unknown error"));
     }
   };
-
+  
   const handlePlayAudio = (audioSrc, tokenId) => {
     if (playingAudio === tokenId) {
       setPlayingAudio(null); // Stop playing
@@ -117,7 +166,7 @@ export default function Marketplace({ wallet }) {
     }
   };
 
-  if (!wallet) {
+  if (!account) {
     return (
       <div className="p-4 text-center">
         <h2 className="text-xl font-bold mb-4">🛒 Marketplace</h2>
@@ -129,6 +178,8 @@ export default function Marketplace({ wallet }) {
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-6 text-center">🛒 Music NFT Marketplace</h2>
+      
+      {/* Removed the duplicate YODA balance display since it's already shown in the TokenBalance component */}
       
       {loading && (
         <div className="text-center py-8">
@@ -194,7 +245,7 @@ export default function Marketplace({ wallet }) {
               
               <div className="flex justify-between items-center mt-4">
                 <p className="font-bold text-lg">
-                  {formatUnits(item.price, 18)} ETH
+                {Number(formatUnits(item.price, 2)).toFixed(2)} YODA
                 </p>
                 <button
                   onClick={() => handleBuy(item.tokenId)}

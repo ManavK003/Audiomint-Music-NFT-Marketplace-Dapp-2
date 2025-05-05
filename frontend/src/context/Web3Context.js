@@ -6,13 +6,13 @@ import YODA_ABI from "../abis/Yoda.json";
 
 export const Web3Context = createContext();
 
-const YODA_ADDRESS = "0x8F1772f19675aF3C5D675f1a93427d30939c32EE";
-const MUSICNFT_ADDRESS = "0x6daB15f808Eb73529baA3E927e330Ae6797c71F1";
-const MARKETPLACE_ADDRESS = "0xbAdE8aa58cB43257ae86F7Bcb80aa89990846038";
+const YODA_ADDRESS = "0xf65c04029C5AB4AFb6A924788194734A73dF3092";
+const MUSICNFT_ADDRESS = "0xb36110186d4CD88D9dFa4B1d71EB244017A0660A";
+const MARKETPLACE_ADDRESS = "0xdb654885711D0Cf92f0D39748Af72b7DeC49a6B3";
 
-// ✅ YodaCoin deployed at: 0x8F1772f19675aF3C5D675f1a93427d30939c32EE
-// ✅ MusicNFT deployed at: 0x6daB15f808Eb73529baA3E927e330Ae6797c71F1
-// ✅ Marketplace deployed at: 0xbAdE8aa58cB43257ae86F7Bcb80aa89990846038
+// ✅ YodaCoin deployed at: 0xf65c04029C5AB4AFb6A924788194734A73dF3092
+// ✅ MusicNFT deployed at: 0xb36110186d4CD88D9dFa4B1d71EB244017A0660A
+// ✅ Marketplace deployed at: 0xdb654885711D0Cf92f0D39748Af72b7DeC49a6B3
 
 export const Web3Provider = ({ children }) => {
   const [account, setAccount] = useState(null);
